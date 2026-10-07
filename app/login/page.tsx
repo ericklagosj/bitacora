@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -96,6 +97,7 @@ export default function LoginPage() {
         <button className="btn primary" type="submit" disabled={busy}>
           {busy ? 'Un momento…' : mode === 'login' ? 'Entrar' : 'Crear cuenta'}
         </button>
+        <ThemeToggle />
         <div className="auth-switch">
           {mode === 'login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}
           <button type="button" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); }}>

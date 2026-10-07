@@ -12,6 +12,7 @@ import { Modal } from './Modal';
 import { TaskDialog, type TaskDraft } from './TaskDialog';
 import { TagsDialog } from './TagsDialog';
 import { PushCard } from './PushCard';
+import { ThemeButton, ThemeToggle } from './ThemeToggle';
 
 const MAXTAGS = 10;
 const VIEWS: [View, string][] = [
@@ -668,7 +669,10 @@ export default function BitacoraApp() {
           <div className="mark" aria-hidden="true"><Svg size={16} w={2.8}>{I.check}</Svg></div>
           <b>Bitácora</b>
         </div>
-        {seg}
+        <div className="mhead-right">
+          {seg}
+          <ThemeButton />
+        </div>
       </header>
 
       <div className="app">
@@ -705,6 +709,10 @@ export default function BitacoraApp() {
             <button className="side-btn" type="button" onClick={() => setTagsOpen('manage')}>
               <Svg size={16}>{I.plus}</Svg>Gestionar etiquetas
             </button>
+          </div>
+          <div>
+            <div className="sec-head"><span>Apariencia</span></div>
+            <ThemeToggle />
           </div>
           <div className="side-foot">
             Presiona <kbd>N</kbd> para crear una tarea.
@@ -888,7 +896,9 @@ export default function BitacoraApp() {
             <p className="note" style={{ margin: '10px 0 0' }}>Eliminar siempre pide confirmación y se puede deshacer.</p>
           </section>
           <section className="card mobile-only-account">
-            <h3>Cuenta</h3>
+            <h3>Apariencia</h3>
+            <ThemeToggle />
+            <h3 style={{ marginTop: 18 }}>Cuenta</h3>
             <p className="note" style={{ margin: '0 0 10px', overflowWrap: 'anywhere' }}>{email}</p>
             <button className="btn sm" type="button" onClick={logout}><Svg size={15}>{I.logout}</Svg>Cerrar sesión</button>
           </section>
