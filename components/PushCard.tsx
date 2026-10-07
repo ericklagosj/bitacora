@@ -69,6 +69,21 @@ export function PushCard({
     }
   }
 
+  async function sendTest() {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/push/test', { method: 'POST' });
+      const j = (await r.json().catch(() => ({}))) as { sent?: number; total?: number; error?: string };
+      if (!r.ok) onToast(j.error ?? 'No se pudo enviar la prueba');
+      else if (j.sent) onToast(`Prueba enviada a ${j.sent} dispositivo${j.sent === 1 ? '' : 's'}. Debería llegar en segundos.`);
+      else onToast('No se pudo entregar la prueba. Desactiva y vuelve a activar los recordatorios.');
+    } catch {
+      onToast('Sin conexión. Inténtalo de nuevo.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function disable() {
     setBusy(true);
     try {
@@ -108,6 +123,9 @@ export function PushCard({
         {status === 'on' && (
           <>
             <p className="push-state">Activados en este dispositivo. Llegan cada mañana.</p>
+            <button className="btn primary sm" type="button" onClick={sendTest} disabled={busy}>
+              {busy ? 'Enviando…' : 'Enviar notificación de prueba'}
+            </button>
             <button className="btn sm" type="button" onClick={disable} disabled={busy}>Desactivar aquí</button>
           </>
         )}

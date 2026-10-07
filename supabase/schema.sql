@@ -190,3 +190,14 @@ end $$;
 revoke execute on function public.handle_new_user() from public, anon, authenticated;
 revoke execute on function public.is_member(uuid) from public, anon;
 grant execute on function public.is_member(uuid) to authenticated;
+
+-- Rendimiento: índices para llaves foráneas y auth.uid() evaluado una vez por consulta
+create index if not exists push_subscriptions_user_idx on public.push_subscriptions (user_id);
+create index if not exists subtasks_task_idx on public.subtasks (task_id);
+create index if not exists tasks_tag_idx on public.tasks (tag_id);
+create index if not exists tasks_created_by_idx on public.tasks (created_by);
+create index if not exists workspace_members_user_idx on public.workspace_members (user_id);
+create index if not exists workspaces_owner_idx on public.workspaces (owner_id);
+alter policy "ver mis membresias" on public.workspace_members using (user_id = (select auth.uid()));
+alter policy "mis ajustes" on public.user_settings using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+alter policy "mis dispositivos" on public.push_subscriptions using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
