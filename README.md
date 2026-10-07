@@ -2,6 +2,8 @@
 
 Tareas diarias de oficina con etiquetas, historial y recordatorios. Es una **PWA instalable** en el celular y el escritorio, con notificaciones push.
 
+**App en vivo:** https://bitacora-tan.vercel.app
+
 Nació de un problema real: en mi trabajo anotaba tareas en papeles y planillas que terminaban perdiéndose.
 
 ## Funcionalidades
