@@ -76,6 +76,21 @@ export const I = {
       <path d="M3 3v5h5M12 8v4l3 2" />
     </>
   ),
+  perfil: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0116 0" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15V5a2 2 0 012-2h10" />
+    </>
+  ),
+  left: <path d="M15 6l-6 6 6 6" />,
+  right: <path d="M9 6l6 6-6 6" />,
+  download: <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />,
   bitacora: (
     <>
       <path d="M6 3h10l3 3v15H6z" />

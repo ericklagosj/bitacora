@@ -201,3 +201,6 @@ create index if not exists workspaces_owner_idx on public.workspaces (owner_id);
 alter policy "ver mis membresias" on public.workspace_members using (user_id = (select auth.uid()));
 alter policy "mis ajustes" on public.user_settings using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 alter policy "mis dispositivos" on public.push_subscriptions using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+-- Perfil: nombre visible
+alter table public.user_settings add column if not exists display_name text check (display_name is null or char_length(display_name) <= 60);

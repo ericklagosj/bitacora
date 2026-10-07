@@ -11,7 +11,8 @@ import { I, PALETTE, Svg } from './icons';
 import { Modal } from './Modal';
 import { TaskDialog, type TaskDraft } from './TaskDialog';
 import { TagsDialog } from './TagsDialog';
-import { PushCard } from './PushCard';
+import { DailyLog } from './DailyLog';
+import { ProfileView } from './ProfileView';
 import { ThemeButton, ThemeToggle } from './ThemeToggle';
 
 const MAXTAGS = 10;
@@ -20,6 +21,7 @@ const VIEWS: [View, string][] = [
   ['proximas', 'Próximas'],
   ['historial', 'Historial'],
   ['bitacora', 'Bitácora'],
+  ['perfil', 'Mi perfil'],
 ];
 const REC: Record<string, string> = { d: 'Diaria', w: 'Semanal', m: 'Mensual' };
 
@@ -43,6 +45,7 @@ export default function BitacoraApp() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [email, setEmail] = useState('');
+  const [memberSince, setMemberSince] = useState('');
   const [wsId, setWsId] = useState('');
   const [tags, setTags] = useState<Tag[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -66,7 +69,7 @@ export default function BitacoraApp() {
   const [confirm, setConfirm] = useState<(ConfirmOpts & { resolve: (v: boolean) => void }) | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const noteTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [hour, setHour] = useState(12);
   const TODAY = todayISO();
 
@@ -79,6 +82,7 @@ export default function BitacoraApp() {
       return;
     }
     setEmail(user.email ?? '');
+    setMemberSince(user.created_at ?? '');
     const { data: mem, error: memErr } = await supabase
       .from('workspace_members')
       .select('workspace_id')
@@ -392,14 +396,15 @@ export default function BitacoraApp() {
   }
 
   /* ---------- Notas y ajustes ---------- */
-  function setNote(body: string) {
-    setNotes((n) => ({ ...n, [TODAY]: body }));
-    if (noteTimer.current) clearTimeout(noteTimer.current);
-    noteTimer.current = setTimeout(async () => {
-      const { error } = await supabase.from('daily_notes').upsert({ workspace_id: wsId, day: TODAY, body });
+  function setNoteFor(day: string, body: string) {
+    setNotes((n) => ({ ...n, [day]: body }));
+    clearTimeout(noteTimers.current[day]);
+    noteTimers.current[day] = setTimeout(async () => {
+      const { error } = await supabase.from('daily_notes').upsert({ workspace_id: wsId, day, body });
       if (error) fail(error.message);
     }, 700);
   }
+  const setNote = (body: string) => setNoteFor(TODAY, body);
 
   async function saveSettings(patch: Partial<Settings>) {
     if (!settings) return;
@@ -442,6 +447,7 @@ export default function BitacoraApp() {
     proximas: tasks.filter((t) => !t.done_at && diff(t.due_date) > 0).length,
     historial: tasks.filter((t) => t.done_at).length,
     bitacora: '',
+    perfil: '',
   };
   const old = tasks.filter((t) => !t.done_at && -diff(t.due_date) >= remindOf(t));
   const todayAll = tasks.filter((t) => diff(t.due_date) <= 0 && (!t.done_at || localDay(t.done_at) === TODAY));
@@ -602,29 +608,34 @@ export default function BitacoraApp() {
     ) : (
       <div className="empty"><b>Historial vacío</b>Cuando completes una tarea, quedará aquí con fecha y hora.</div>
     );
-  } else {
-    const keys = Object.keys(notes)
-      .filter((k) => k !== TODAY && notes[k].trim() && (!q || notes[k].toLowerCase().includes(q)))
-      .sort()
-      .reverse();
+  } else if (view === 'bitacora') {
     list = (
-      <>
-        <section className="group">
-          <div className="ghead"><h2>Hoy · {longDate(TODAY)}</h2></div>
-          <label htmlFor="logToday" className="sr">Notas de hoy</label>
-          <textarea className="ruled big" id="logToday" placeholder="Escribe tus apuntes del día…" value={notes[TODAY] ?? ''} onChange={(e) => setNote(e.target.value)} />
-        </section>
-        {keys.map((k) => (
-          <section className="group" key={k}>
-            <div className="ghead"><h2>{longDate(k)}</h2></div>
-            <div className="logday">{notes[k]}</div>
-          </section>
-        ))}
-      </>
+      <DailyLog tasks={tasks} tags={tags} notes={notes} query={query} onNote={setNoteFor} onOpenTask={(t) => setEditing(t)} onToast={showToast} />
+    );
+  } else {
+    list = (
+      <ProfileView
+        supabase={supabase}
+        email={email}
+        memberSince={memberSince}
+        settings={settings}
+        tasks={tasks}
+        tags={tags}
+        notes={notes}
+        streak={streak}
+        onSettings={saveSettings}
+        onToast={showToast}
+        onLogout={logout}
+      />
     );
   }
 
-  const greeting = view === 'hoy' ? (hour < 12 ? 'Buenos días' : hour < 20 ? 'Buenas tardes' : 'Buenas noches') : VIEWS.find((v) => v[0] === view)![1];
+  const firstName = (settings?.display_name ?? '').trim().split(/\s+/)[0];
+  const greeting =
+    view === 'hoy'
+      ? `${hour < 12 ? 'Buenos días' : hour < 20 ? 'Buenas tardes' : 'Buenas noches'}${firstName ? `, ${firstName}` : ''}`
+      : VIEWS.find((v) => v[0] === view)![1];
+  const workView = view !== 'bitacora' && view !== 'perfil';
   const summary =
     view === 'hoy' ? (
       pToday || pLate ? (
@@ -635,7 +646,7 @@ export default function BitacoraApp() {
       ) : (
         'Todo al día. Buen trabajo.'
       )
-    ) : view === 'proximas' ? 'Lo que viene en los próximos días.' : view === 'historial' ? 'Todo lo que has completado, con fecha y hora.' : 'Tus apuntes del día, ordenados por fecha.';
+    ) : view === 'proximas' ? 'Lo que viene en los próximos días.' : view === 'historial' ? 'Todo lo que has completado, con fecha y hora.' : view === 'bitacora' ? 'Elige un día en el calendario para ver qué hiciste y tus apuntes.' : 'Tus estadísticas, ajustes y respaldo de datos.';
 
   const navTo = (v: View) => {
     setView(v);
@@ -675,7 +686,7 @@ export default function BitacoraApp() {
         </div>
       </header>
 
-      <div className="app">
+      <div className={`app ${workView ? '' : 'no-panel'}`}>
         <aside className="side">
           <div className="brand">
             <div className="mark" aria-hidden="true"><Svg size={18} w={2.8}>{I.check}</Svg></div>
@@ -746,6 +757,7 @@ export default function BitacoraApp() {
             </div>
           </section>
 
+          {workView && (<>
           <div className="week" role="group" aria-label="Filtrar por día de esta semana">
             {weekDays().map((d, i) => {
               const s = iso(d);
@@ -759,7 +771,6 @@ export default function BitacoraApp() {
                   aria-label={`${longDate(s)}, ${due.length} tareas`}
                   onClick={() => {
                     setDayFilter(dayFilter === s ? null : s);
-                    if (view === 'bitacora') setView('hoy');
                   }}
                 >
                   <span className="dl">{d.toLocaleDateString('es-CL', { weekday: 'short' }).replace('.', '').slice(0, 3)}</span>
@@ -792,8 +803,9 @@ export default function BitacoraApp() {
               <button className="btn primary sm" type="submit">Agregar</button>
             </div>
           </form>
+          </>)}
 
-          {old.length > 0 && view !== 'bitacora' && (
+          {old.length > 0 && workView && (
             <div className="alert">
               <span className="bell" aria-hidden="true"><Svg size={19}>{I.bell}</Svg></span>
               <div className="txt">
@@ -812,7 +824,7 @@ export default function BitacoraApp() {
             </div>
           )}
 
-          {view !== 'bitacora' && (
+          {workView && (
             <div className="tabs" role="toolbar" aria-label="Filtrar por etiqueta">
               <button className="tab" type="button" aria-pressed={!filter} onClick={() => setFilter(null)}>
                 Todas <span className="n">{tasks.filter((t) => !t.done_at).length}</span>
@@ -830,11 +842,12 @@ export default function BitacoraApp() {
           )}
 
           <div id="list">
-            {query && <p className="note" style={{ margin: '8px 2px 0' }}>Resultados para “{query}”</p>}
+            {query && workView && <p className="note" style={{ margin: '8px 2px 0' }}>Resultados para “{query}”</p>}
             {list}
           </div>
         </main>
 
+        {workView && (
         <aside className="panel">
           <section className="card">
             <h3>Progreso de hoy <small>{pad(T0.getDate())}/{pad(T0.getMonth() + 1)}</small></h3>
@@ -862,6 +875,7 @@ export default function BitacoraApp() {
             <h3>Bitácora de hoy <small>se guarda sola</small></h3>
             <label htmlFor="note" className="sr">Apuntes de hoy</label>
             <textarea id="note" className="ruled" placeholder="Anota lo que no quieres olvidar…" value={notes[TODAY] ?? ''} onChange={(e) => setNote(e.target.value)} />
+            <button type="button" className="btn ghost sm" style={{ marginTop: 6, paddingInline: 0 }} onClick={() => navTo('bitacora')}>Ver bitácora de otros días</button>
           </section>
           <section className="card">
             <h3>Próximos vencimientos</h3>
@@ -882,27 +896,8 @@ export default function BitacoraApp() {
               <p className="note">Sin vencimientos próximos.</p>
             )}
           </section>
-          <PushCard supabase={supabase} settings={settings} onSettings={saveSettings} onToast={showToast} />
-          <section className="card">
-            <h3>Protección</h3>
-            <label className="switch" htmlFor="optDone">
-              <input type="checkbox" id="optDone" checked={!!settings?.confirm_done} onChange={(e) => {
-                saveSettings({ confirm_done: e.target.checked });
-                showToast(e.target.checked ? 'Se pedirá confirmación al completar' : 'Completar ya no pedirá confirmación');
-              }} />
-              <span className="tg" aria-hidden="true" />
-              <span>Confirmar antes de completar o reabrir</span>
-            </label>
-            <p className="note" style={{ margin: '10px 0 0' }}>Eliminar siempre pide confirmación y se puede deshacer.</p>
-          </section>
-          <section className="card mobile-only-account">
-            <h3>Apariencia</h3>
-            <ThemeToggle />
-            <h3 style={{ marginTop: 18 }}>Cuenta</h3>
-            <p className="note" style={{ margin: '0 0 10px', overflowWrap: 'anywhere' }}>{email}</p>
-            <button className="btn sm" type="button" onClick={logout}><Svg size={15}>{I.logout}</Svg>Cerrar sesión</button>
-          </section>
         </aside>
+        )}
       </div>
 
       <button className="fab" type="button" onClick={() => setEditing('new')} aria-label="Nueva tarea">

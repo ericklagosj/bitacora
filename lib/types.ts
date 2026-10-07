@@ -37,6 +37,7 @@ export interface Settings {
   remind_after_days: number;
   confirm_done: boolean;
   email_digest: boolean;
+  display_name?: string | null;
 }
 
-export type View = 'hoy' | 'proximas' | 'historial' | 'bitacora';
+export type View = 'hoy' | 'proximas' | 'historial' | 'bitacora' | 'perfil';
