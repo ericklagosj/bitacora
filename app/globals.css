@@ -328,3 +328,6 @@ body{margin:0}
 .mobile-only-account{display:none}
 @media (max-width:760px){.mobile-only-account{display:block}}
 .auth-card input[type=password]{border:1px solid var(--line-2);border-radius:11px;background:var(--surface);padding:10px 12px;min-height:46px;width:100%}
+.mobile-only-account{display:none}
+@media (max-width:760px){.mobile-only-account{display:block}}
+.field input[type=password]{border:1px solid var(--line-2);border-radius:11px;background:var(--surface);padding:10px 12px;min-height:46px;width:100%}
